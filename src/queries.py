@@ -47,3 +47,54 @@ def get_cell_frequencies(conn):
     """
 
     return pd.read_sql_query(query, conn)
+
+
+def get_analysis_data(conn):
+    """
+    Return sample metadata together with cell population
+    counts and relative frequencies.
+    """
+
+    query = """
+    WITH sample_totals AS (
+        SELECT
+            sample_id,
+            SUM(count) AS total_count
+        FROM cell_counts
+        GROUP BY sample_id
+    )
+
+    SELECT
+        s.sample_id AS sample,
+        s.project_id AS project,
+        s.subject_id AS subject,
+        sub.condition,
+        sub.age,
+        sub.sex,
+        sub.response,
+        s.treatment,
+        s.sample_type,
+        s.time_from_treatment_start,
+        cp.name AS population,
+        cc.count,
+        st.total_count,
+        100.0 * cc.count /
+            NULLIF(st.total_count, 0) AS percentage
+
+    FROM samples s
+
+    JOIN subjects sub
+        ON s.project_id = sub.project_id
+       AND s.subject_id = sub.subject_id
+
+    JOIN cell_counts cc
+        ON s.sample_id = cc.sample_id
+
+    JOIN cell_populations cp
+        ON cc.population_id = cp.population_id
+
+    JOIN sample_totals st
+        ON s.sample_id = st.sample_id;
+    """
+
+    return pd.read_sql_query(query, conn)
