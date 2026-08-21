@@ -98,3 +98,78 @@ def get_analysis_data(conn):
     """
 
     return pd.read_sql_query(query, conn)
+
+
+def get_baseline_samples(conn):
+    """
+    Part 4:
+    Return melanoma PBMC baseline samples from subjects
+    treated with miraclib.
+    """
+
+    query = """
+    SELECT
+        s.sample_id AS sample,
+        s.project_id AS project,
+        s.subject_id AS subject,
+        sub.condition,
+        sub.age,
+        sub.sex,
+        sub.response,
+        s.treatment,
+        s.sample_type,
+        s.time_from_treatment_start
+
+    FROM samples s
+
+    JOIN subjects sub
+        ON s.project_id = sub.project_id
+       AND s.subject_id = sub.subject_id
+
+    WHERE LOWER(sub.condition) = 'melanoma'
+      AND LOWER(s.treatment) = 'miraclib'
+      AND UPPER(s.sample_type) = 'PBMC'
+      AND s.time_from_treatment_start = 0
+
+    ORDER BY
+        s.project_id,
+        s.subject_id,
+        s.sample_id;
+    """
+
+    return pd.read_sql_query(query, conn)
+
+
+def get_q1_average_b_cells(conn):
+    """
+    Q1:
+    Average B-cell count for male melanoma responders
+    at time 0 across ALL sample types and treatments.
+    """
+
+    query = """
+    SELECT
+        AVG(cc.count) AS average_b_cells
+
+    FROM samples s
+
+    JOIN subjects sub
+        ON s.project_id = sub.project_id
+       AND s.subject_id = sub.subject_id
+
+    JOIN cell_counts cc
+        ON s.sample_id = cc.sample_id
+
+    JOIN cell_populations cp
+        ON cc.population_id = cp.population_id
+
+    WHERE LOWER(sub.condition) = 'melanoma'
+      AND UPPER(sub.sex) = 'M'
+      AND LOWER(sub.response) = 'yes'
+      AND s.time_from_treatment_start = 0
+      AND cp.name = 'b_cell';
+    """
+
+    result = pd.read_sql_query(query, conn)
+
+    return result.iloc[0]["average_b_cells"]
